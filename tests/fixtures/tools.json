@@ -1,0 +1,3726 @@
+[
+  {
+    "name": "abi_decode",
+    "description": "Decode ABI data against a signature. Runs locally against no network.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "data": {
+          "description": "The 0x-prefixed data to decode.",
+          "type": "string"
+        },
+        "input_data": {
+          "description": "Decode the function's inputs rather than its outputs. Set this when\n`data` is transaction calldata. Defaults to false.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "signature": {
+          "description": "A function signature such as `balanceOf(address)`, or a bare type list\nsuch as `(uint256,address)`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signature",
+        "data"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "DecodedValue": {
+          "properties": {
+            "kind": {
+              "description": "The Solidity type, as resolved from the signature.",
+              "type": "string"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "value": true
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "selector": {
+          "description": "Set when `input_data` was true and the data carried a selector.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selector_mismatch": {
+          "description": "Present when the data's selector does not match the signature given.\nThe values below were still decoded, and are probably wrong.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "signature": {
+          "type": "string"
+        },
+        "values": {
+          "description": "One entry per decoded value, in order.",
+          "items": {
+            "$ref": "#/$defs/DecodedValue"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "signature",
+        "values"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "address_get",
+    "description": "Read what the explorer knows about an address: whether it is a contract,\nwhether its source is verified, its tags, and its balance.\nThis is indexed data. It is good for orientation and should not be the\nbasis of a decision that a chain read could settle.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "An address, or an ENS name when the `ens` feature is compiled in.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "is_contract": {
+          "type": "boolean"
+        },
+        "is_verified": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "type": "string"
+        },
+        "overview": {
+          "description": "The explorer's own record, unaltered."
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "is_contract",
+        "is_verified",
+        "source",
+        "overview"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "address_nfts",
+    "description": "One bounded page of the NFTs an address holds.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "An address, or an ENS name when the `ens` feature is compiled in.",
+          "type": "string"
+        },
+        "cursor": {
+          "description": "A `next_cursor` from a previous call.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        },
+        "page_size": {
+          "description": "Items per page, 1 to 100. Defaults to 50.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "count": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "items": true,
+          "type": "array"
+        },
+        "network": {
+          "type": "string"
+        },
+        "next_cursor": {
+          "description": "Pass this back as `cursor` to get the next page. Absent means this was\nthe last one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "description": "The instance these items came from.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "items",
+        "count",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "address_tokens",
+    "description": "List an address's token balances, discovered through the explorer and\nverified on chain.\nThe token list comes from the indexer, because the chain cannot be asked\n\"which tokens has this address held\" in bounded time. Every balance is\nthen re-read through Multicall3 at one pinned block, so the numbers are\nauthoritative and mutually consistent. A row where the two disagree is\nflagged rather than overwritten.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "An address, or an ENS name when the `ens` feature is compiled in.",
+          "type": "string"
+        },
+        "cursor": {
+          "description": "A `next_cursor` from a previous call.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "include_icons": {
+          "description": "Include icon candidate URLs. Costs nothing: the URLs are constructed,\nnot fetched. Defaults to true.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        },
+        "page_size": {
+          "description": "How many tokens to return, 1 to 100. Defaults to 50.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "skip_verification": {
+          "description": "Skip the on-chain verification pass and return the indexer's numbers.\nFaster, and the balances may be stale. Defaults to false.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "token_types": {
+          "description": "Which token standards to include. Defaults to ERC-20 only, because a\nwallet with thousands of airdropped NFTs is what `address_nfts` is for.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Amount": {
+          "description": "A base-unit integer with the decimals needed to read it.\n\n`raw` is a decimal string because a `u256` does not survive JSON's number\ntype, and `formatted` is computed with integer arithmetic so it is exact\nrather than whatever `f64` rounded it to.",
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "formatted": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "decimals",
+            "formatted"
+          ],
+          "type": "object"
+        },
+        "BlockContext": {
+          "description": "The block a result was read at. Present wherever a number could change\nbetween two calls, so two fields of one answer are known to agree.",
+          "properties": {
+            "hash": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "number": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number"
+          ],
+          "type": "object"
+        },
+        "IconCandidate": {
+          "properties": {
+            "source": {
+              "description": "The source that offers this URL: blockscout, avara, zerion, smoldapp,\nor safewallet.",
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "url"
+          ],
+          "type": "object"
+        },
+        "Source": {
+          "description": "Where a field came from, named rather than implied.",
+          "oneOf": [
+            {
+              "const": "on_chain",
+              "description": "A direct contract read or RPC call against the configured endpoint.",
+              "type": "string"
+            },
+            {
+              "const": "explorer",
+              "description": "A Blockscout index.",
+              "type": "string"
+            },
+            {
+              "const": "explorer_verified_on_chain",
+              "description": "Both agreed.",
+              "type": "string"
+            },
+            {
+              "const": "explorer_unverified",
+              "description": "The index said so and the chain was not asked, or disagreed.",
+              "type": "string"
+            }
+          ]
+        },
+        "TokenBalance": {
+          "properties": {
+            "balance": {
+              "$ref": "#/$defs/Amount"
+            },
+            "icons": {
+              "items": {
+                "$ref": "#/$defs/IconCandidate"
+              },
+              "type": "array"
+            },
+            "indexed_balance": {
+              "description": "Present only when the index and the chain disagreed. The index is\nusually behind; occasionally it is wrong. Either way it is worth seeing\nrather than having smoothed over.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "source": {
+              "$ref": "#/$defs/Source"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "token": {
+              "type": "string"
+            },
+            "token_type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "token",
+            "token_type",
+            "balance",
+            "source",
+            "icons"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "next_cursor": {
+          "description": "Pass this back as `cursor` for the next page. Absent means this was the\nlast one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sources": {
+          "description": "Names every upstream that contributed to this answer.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tokens": {
+          "items": {
+            "$ref": "#/$defs/TokenBalance"
+          },
+          "type": "array"
+        },
+        "verification_note": {
+          "description": "Set when verification was asked for and could not be done.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BlockContext"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The block every verified balance was read at, so two rows of this answer\nare known to agree with each other."
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "tokens",
+        "sources"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "address_transfers",
+    "description": "One bounded page of an address's token transfers, newest first.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "An address, or an ENS name when the `ens` feature is compiled in.",
+          "type": "string"
+        },
+        "cursor": {
+          "description": "A `next_cursor` from a previous call.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        },
+        "page_size": {
+          "description": "Items per page, 1 to 100. Defaults to 50.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "token": {
+          "description": "Restrict to transfers of this token contract.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "count": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "items": true,
+          "type": "array"
+        },
+        "network": {
+          "type": "string"
+        },
+        "next_cursor": {
+          "description": "Pass this back as `cursor` to get the next page. Absent means this was\nthe last one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "description": "The instance these items came from.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "items",
+        "count",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "address_txs",
+    "description": "One bounded page of an address's transactions, newest first.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "An address, or an ENS name when the `ens` feature is compiled in.",
+          "type": "string"
+        },
+        "cursor": {
+          "description": "A `next_cursor` from a previous call.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        },
+        "page_size": {
+          "description": "Items per page, 1 to 100. Defaults to 50.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "count": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "items": true,
+          "type": "array"
+        },
+        "network": {
+          "type": "string"
+        },
+        "next_cursor": {
+          "description": "Pass this back as `cursor` to get the next page. Absent means this was\nthe last one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "description": "The instance these items came from.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "items",
+        "count",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "avatar_get",
+    "description": "Resolve an ENS avatar record to a fetchable URL.\nNot implemented yet. The schema is fixed; the resolver is waiting on\n`eth-avatars` to expose one.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name_or_address": {
+          "description": "An ENS name, or an address to reverse-resolve first.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list` whose endpoint serves Ethereum mainnet.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "name_or_address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "mime_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "The name the avatar record was read from.",
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "record": {
+          "description": "The record exactly as stored, which may be `ipfs://`, `https://`,\n`data:`, or an `eip155:` NFT reference.",
+          "type": "string"
+        },
+        "resolved_via": {
+          "description": "How the record was resolved: `direct`, `ipfs_gateway`, or `nft`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "description": "The record resolved to something fetchable over HTTPS.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "name",
+        "record"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "balance_get",
+    "description": "Read a native balance for an address or ENS name.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "A 20-byte address, or an ENS name when the `ens` feature is compiled in.",
+          "type": "string"
+        },
+        "block": {
+          "description": "Block number, tag, or hash. Defaults to `latest`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Amount": {
+          "description": "A base-unit integer with the decimals needed to read it.\n\n`raw` is a decimal string because a `u256` does not survive JSON's number\ntype, and `formatted` is computed with integer arithmetic so it is exact\nrather than whatever `f64` rounded it to.",
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "formatted": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "decimals",
+            "formatted"
+          ],
+          "type": "object"
+        },
+        "BlockContext": {
+          "description": "The block a result was read at. Present wherever a number could change\nbetween two calls, so two fields of one answer are known to agree.",
+          "properties": {
+            "hash": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "number": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "balance": {
+          "$ref": "#/$defs/Amount"
+        },
+        "block": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BlockContext"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "network": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "balance"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "block_get",
+    "description": "Read one block by number, tag, or hash.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "block": {
+          "description": "Block number, a tag (`latest`, `earliest`, `pending`, `safe`,\n`finalized`), or a 32-byte block hash. Defaults to `latest`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "include_transactions": {
+          "description": "Return full transaction objects instead of hashes. Defaults to false,\nbecause a full mainnet block is large.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "block": true,
+        "hash": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "number": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "transaction_count": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "network",
+        "number",
+        "hash",
+        "timestamp",
+        "transaction_count",
+        "block"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "call",
+    "description": "Execute a read-only call. This never broadcasts and never changes state,\non this or any other network.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "block": {
+          "description": "Block number, tag, or hash. Defaults to `latest`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data": {
+          "description": "ABI-encoded calldata. Build it with `calldata_encode`. Defaults to `0x`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "description": "The caller to simulate as. Defaults to the zero address.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        },
+        "to": {
+          "description": "The contract to call.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Native value to attach, decimal or 0x-prefixed wei.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "to"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "data": {
+          "description": "Raw return data. Decode it with `abi_decode`.",
+          "type": "string"
+        },
+        "empty": {
+          "description": "True when the call returned nothing, which for a contract that exists\nusually means the function does not.",
+          "type": "boolean"
+        },
+        "network": {
+          "type": "string"
+        },
+        "size": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "network",
+        "data",
+        "size",
+        "empty"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "calldata_encode",
+    "description": "Encode a function signature and its arguments into calldata. Runs\nlocally against no network.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "arguments": {
+          "description": "One string per parameter, in order. Numbers may be decimal or\n0x-prefixed; addresses and bytes are 0x-prefixed; booleans are\n`true` or `false`; arrays are `[a,b,c]`.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "signature": {
+          "description": "A Solidity function signature, for example\n`transfer(address,uint256)`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signature"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "calldata": {
+          "type": "string"
+        },
+        "selector": {
+          "type": "string"
+        },
+        "signature": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "signature",
+        "selector",
+        "calldata"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "code_get",
+    "description": "Read deployed runtime bytecode.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "A 20-byte address.",
+          "type": "string"
+        },
+        "block": {
+          "description": "Block number, tag, or hash. Defaults to `latest`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "is_contract": {
+          "description": "False for an externally owned account, and for a contract that has not\nbeen deployed at this block yet.",
+          "type": "boolean"
+        },
+        "network": {
+          "type": "string"
+        },
+        "size": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "is_contract",
+        "size",
+        "code"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "contract_abi",
+    "description": "Read a verified contract's ABI.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "An address, or an ENS name when the `ens` feature is compiled in.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "abi": {
+          "description": "Absent when the contract is not verified. That is not the same as a\ncontract with no functions."
+        },
+        "address": {
+          "type": "string"
+        },
+        "implementation": {
+          "description": "Set when this address is a proxy. The ABI above is the proxy's own;\nthe implementation's is at this address.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "verified",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "contract_source",
+    "description": "Read a verified contract's source metadata, and optionally its source.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "The contract address.",
+          "type": "string"
+        },
+        "include_source": {
+          "description": "Include the full source text. Off by default because a verified\ncontract's sources can be hundreds of kilobytes.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "compiler_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evm_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "files": {
+          "description": "File name to source text. Present only when `include_source` was set."
+        },
+        "implementation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "optimization_enabled": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "optimization_runs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "verified",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "ens_records",
+    "description": "Read the standard ENS text records for a name.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "keys": {
+          "description": "Extra text record keys to read alongside the standard set.",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "An ENS name, for example `vitalik.eth`.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list` whose endpoint serves Ethereum mainnet.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "name"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Record": {
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "truncated": {
+              "description": "True when the value was longer than the limit and was cut.",
+              "type": "boolean"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "value",
+            "truncated"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "avatar": {
+          "description": "The raw `avatar` record, repeated here because it is the one every\ncaller wants. Resolving it to a fetchable URL is `avatar_get`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fully_normalized": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "records": {
+          "description": "Only keys that are set. A key with no value is absent rather than empty.",
+          "items": {
+            "$ref": "#/$defs/Record"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "network",
+        "name",
+        "fully_normalized",
+        "records"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "ens_resolve",
+    "description": "Resolve an ENS name to an address.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name": {
+          "description": "An ENS name, for example `vitalik.eth`.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list` whose endpoint serves Ethereum mainnet.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "name"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "fully_normalized": {
+          "description": "False when the name contains characters this build cannot normalize, in\nwhich case it was hashed exactly as given.",
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "name",
+        "address",
+        "fully_normalized"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "ens_reverse",
+    "description": "Resolve an address to its primary ENS name, and check that the name\nresolves back to the same address before reporting it as verified.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "A 20-byte address.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list` whose endpoint serves Ethereum mainnet.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "forward_resolves_to": {
+          "description": "Where forward verification landed, when it disagreed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "forward_verified": {
+          "description": "True only when resolving `name` forward returns `address` again.\n\nA reverse record is written by whoever controls the address and is not\nproof of anything on its own. An unverified name is somebody's claim,\nnot an identity, so do not display it as one.",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "The reverse record, if one is set.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "forward_verified"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "fork_accounts",
+    "description": "List the fork's funded development accounts and their keys.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "fork_id": {
+          "description": "An id from `fork_create` or `fork_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fork_id"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Account": {
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "private_key": {
+              "description": "A well-known Anvil development key. It funds nothing outside this local\nfork, and is safe to put on a command line.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "accounts": {
+          "items": {
+            "$ref": "#/$defs/Account"
+          },
+          "type": "array"
+        },
+        "fork_id": {
+          "type": "string"
+        },
+        "rpc_url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fork_id",
+        "rpc_url",
+        "accounts"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "fork_close",
+    "description": "Stop a fork and release its port.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "fork_id": {
+          "description": "An id from `fork_create` or `fork_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fork_id"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "fork_id": {
+          "type": "string"
+        },
+        "stopped": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "fork_id",
+        "stopped"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "fork_create",
+    "description": "Start an isolated Anvil fork of a configured network and return the\nloopback RPC URL to drive it at.\nEverything you do to the fork afterwards goes through your own tools\nagainst that URL: `cast`, `forge`, or a script in the repository. There\nare deliberately no tools here for setting balances, impersonating, or\nsending, because `cast` already does all three with better arguments.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "block_number": {
+          "description": "Fork at this height instead of the chain head. Pin it when you want a\nrun to be reproducible.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`. Its RPC URL becomes the fork source.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Account": {
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "private_key": {
+              "description": "A well-known Anvil development key. It funds nothing outside this local\nfork, and is safe to put on a command line.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "address"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "accounts": {
+          "items": {
+            "$ref": "#/$defs/Account"
+          },
+          "type": "array"
+        },
+        "chain_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fork_block_number": {
+          "description": "The height the fork was taken at, when one was pinned.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "fork_id": {
+          "type": "string"
+        },
+        "how_to_use": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "port": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rpc_url": {
+          "description": "The endpoint to point `cast`, `forge`, or a script at.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fork_id",
+        "rpc_url",
+        "port",
+        "network",
+        "chain_id",
+        "accounts",
+        "how_to_use"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "fork_list",
+    "description": "List every fork this server is running, with the URL for each.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "ForkSummary": {
+          "properties": {
+            "age_seconds": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "alive": {
+              "type": "boolean"
+            },
+            "chain_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "fork_block_number": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "fork_id": {
+              "type": "string"
+            },
+            "network": {
+              "type": "string"
+            },
+            "port": {
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "rpc_url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "fork_id",
+            "rpc_url",
+            "port",
+            "network",
+            "chain_id",
+            "alive",
+            "age_seconds"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "forks": {
+          "items": {
+            "$ref": "#/$defs/ForkSummary"
+          },
+          "type": "array"
+        },
+        "how_to_use": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "forks",
+        "how_to_use"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "fork_logs",
+    "description": "Read the tail of the fork's Anvil output.\nAnvil logs every RPC call it serves, so this is where you see what your\nown `cast` and `forge` commands did against the fork, and why one of\nthem failed.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "fork_id": {
+          "description": "An id from `fork_create` or `fork_list`.",
+          "type": "string"
+        },
+        "lines": {
+          "description": "How many lines from the end to return. Defaults to 50, capped at 200.",
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "fork_id"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "fork_id": {
+          "type": "string"
+        },
+        "lines": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "truncated": {
+          "description": "True when older lines have already been dropped from the buffer.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "fork_id",
+        "lines",
+        "truncated"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "fork_status",
+    "description": "Check whether a fork is still alive and where its head is.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "fork_id": {
+          "description": "An id from `fork_create` or `fork_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fork_id"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "age_seconds": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "alive": {
+          "type": "boolean"
+        },
+        "chain_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fork_block_number": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "fork_id": {
+          "type": "string"
+        },
+        "head_block": {
+          "description": "The fork's current head, which advances as you mine or send.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "how_to_use": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "port": {
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rpc_url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fork_id",
+        "rpc_url",
+        "port",
+        "network",
+        "chain_id",
+        "alive",
+        "age_seconds",
+        "how_to_use"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "gas_estimate",
+    "description": "Estimate the gas a transaction would use, without broadcasting it.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "data": {
+          "description": "ABI-encoded calldata, or deployment bytecode when `to` is omitted.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "description": "The sender to simulate as.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        },
+        "to": {
+          "description": "The contract to call. Omit to estimate a deployment.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value": {
+          "description": "Native value to attach, decimal or 0x-prefixed wei.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Amount": {
+          "description": "A base-unit integer with the decimals needed to read it.\n\n`raw` is a decimal string because a `u256` does not survive JSON's number\ntype, and `formatted` is computed with integer arithmetic so it is exact\nrather than whatever `f64` rounded it to.",
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "formatted": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "decimals",
+            "formatted"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "estimated_fee": {
+          "$ref": "#/$defs/Amount",
+          "description": "Gas multiplied by the current gas price, as a spend estimate."
+        },
+        "gas": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "network": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "gas",
+        "estimated_fee"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "icon_get",
+    "description": "Resolve icon candidate URLs for a network, its native asset, or an\nERC-20.\nReturns URLs and their sources. It does not download any image, so the\ncall is free and no image bytes enter the conversation.",
+    "inputSchema": {
+      "$defs": {
+        "IconKind": {
+          "oneOf": [
+            {
+              "const": "network",
+              "description": "The chain's own logo.",
+              "type": "string"
+            },
+            {
+              "const": "native",
+              "description": "The chain's native asset, such as ETH.",
+              "type": "string"
+            },
+            {
+              "const": "erc20",
+              "description": "An ERC-20, identified by `token`.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IconKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "What to fetch an icon for. Defaults to `erc20` when `token` is given,\nand `network` when it is not."
+        },
+        "network": {
+          "description": "A name from `network_list`. Its chain ID selects the icon set.",
+          "type": "string"
+        },
+        "token": {
+          "description": "The ERC-20 contract address. Required when `kind` is `erc20`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "IconCandidate": {
+          "properties": {
+            "source": {
+              "description": "The source that offers this URL: blockscout, avara, zerion, smoldapp,\nor safewallet.",
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "url"
+          ],
+          "type": "object"
+        },
+        "IconKind": {
+          "oneOf": [
+            {
+              "const": "network",
+              "description": "The chain's own logo.",
+              "type": "string"
+            },
+            {
+              "const": "native",
+              "description": "The chain's native asset, such as ETH.",
+              "type": "string"
+            },
+            {
+              "const": "erc20",
+              "description": "An ERC-20, identified by `token`.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "candidates": {
+          "description": "Ranked by source order. These are candidates, not confirmations: no\nrequest was made, so a URL here may still 404.",
+          "items": {
+            "$ref": "#/$defs/IconCandidate"
+          },
+          "type": "array"
+        },
+        "chain_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/IconKind"
+        },
+        "network": {
+          "type": "string"
+        },
+        "token": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "unsupported_sources": {
+          "description": "Sources that do not cover this kind of query, named rather than\nsilently dropped.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "network",
+        "chain_id",
+        "kind",
+        "candidates",
+        "unsupported_sources"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "logs_get",
+    "description": "Read logs over a bounded block range.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "Restrict to logs emitted by this contract.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from_block": {
+          "description": "First block in the range, inclusive.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        },
+        "to_block": {
+          "description": "Last block in the range, inclusive. At most 10,000 blocks after\n`from_block`; a wider range is rejected before anything is sent.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "topics": {
+          "description": "Up to four topic filters, positionally. Use `null` for a wildcard in a\nposition you do not want to constrain. Topic 0 is the event signature\nhash; `signature_lookup` can tell you what one is.",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "from_block",
+        "to_block"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "count": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "from_block": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "logs": {
+          "items": true,
+          "type": "array"
+        },
+        "network": {
+          "type": "string"
+        },
+        "to_block": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "network",
+        "from_block",
+        "to_block",
+        "count",
+        "logs"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "network_list",
+    "description": "List configured networks, the chain each endpoint resolved to, and what\nthat chain unlocked. Start here: it is the one place that explains why a\ntool would answer `unsupported_on_network`.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Capabilities": {
+          "properties": {
+            "explorer": {
+              "description": "Explorer tools work. Derived from the chain ID, not configured.",
+              "type": "boolean"
+            },
+            "forks": {
+              "description": "The server was built with fork support and `anvil` should be on PATH.",
+              "type": "boolean"
+            },
+            "prices": {
+              "description": "`price_get` can reach `fiat:usd` on this chain.",
+              "type": "boolean"
+            },
+            "trace_namespace": {
+              "$ref": "#/$defs/TraceSupport"
+            },
+            "traces": {
+              "description": "`trace_tx` and `trace_call` work.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "explorer",
+            "traces",
+            "trace_namespace",
+            "prices",
+            "forks"
+          ],
+          "type": "object"
+        },
+        "NetworkSummary": {
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "capabilities": {
+              "$ref": "#/$defs/Capabilities",
+              "description": "Which tool groups this chain unlocked, and why the others are dark."
+            },
+            "chain": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "chain_id": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "network": {
+              "type": "string"
+            },
+            "rpc_url": {
+              "type": "string"
+            },
+            "unavailable_reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "network",
+            "rpc_url",
+            "available",
+            "capabilities"
+          ],
+          "type": "object"
+        },
+        "TraceSupport": {
+          "description": "Whether the configured endpoint serves a tracing namespace. Detected once,\nwith no fallback provider: a public endpoint that withholds `trace_` is\nreported as unavailable rather than quietly answered by something else.",
+          "oneOf": [
+            {
+              "enum": [
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "parity",
+              "description": "The `trace_` namespace answered.",
+              "type": "string"
+            },
+            {
+              "const": "debug",
+              "description": "The `debug_` namespace answered.",
+              "type": "string"
+            },
+            {
+              "const": "both",
+              "description": "Both answered. `trace_` is preferred because its output is smaller.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "features": {
+          "description": "Tool groups compiled into this binary.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "networks": {
+          "items": {
+            "$ref": "#/$defs/NetworkSummary"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "networks",
+        "features"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "network_status",
+    "description": "Chain identity, client version, head block, and gas price for one network.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Amount": {
+          "description": "A base-unit integer with the decimals needed to read it.\n\n`raw` is a decimal string because a `u256` does not survive JSON's number\ntype, and `formatted` is computed with integer arithmetic so it is exact\nrather than whatever `f64` rounded it to.",
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "formatted": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "decimals",
+            "formatted"
+          ],
+          "type": "object"
+        },
+        "BlockContext": {
+          "description": "The block a result was read at. Present wherever a number could change\nbetween two calls, so two fields of one answer are known to agree.",
+          "properties": {
+            "hash": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "number": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number"
+          ],
+          "type": "object"
+        },
+        "Capabilities": {
+          "properties": {
+            "explorer": {
+              "description": "Explorer tools work. Derived from the chain ID, not configured.",
+              "type": "boolean"
+            },
+            "forks": {
+              "description": "The server was built with fork support and `anvil` should be on PATH.",
+              "type": "boolean"
+            },
+            "prices": {
+              "description": "`price_get` can reach `fiat:usd` on this chain.",
+              "type": "boolean"
+            },
+            "trace_namespace": {
+              "$ref": "#/$defs/TraceSupport"
+            },
+            "traces": {
+              "description": "`trace_tx` and `trace_call` work.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "explorer",
+            "traces",
+            "trace_namespace",
+            "prices",
+            "forks"
+          ],
+          "type": "object"
+        },
+        "TraceSupport": {
+          "description": "Whether the configured endpoint serves a tracing namespace. Detected once,\nwith no fallback provider: a public endpoint that withholds `trace_` is\nreported as unavailable rather than quietly answered by something else.",
+          "oneOf": [
+            {
+              "enum": [
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "parity",
+              "description": "The `trace_` namespace answered.",
+              "type": "string"
+            },
+            {
+              "const": "debug",
+              "description": "The `debug_` namespace answered.",
+              "type": "string"
+            },
+            {
+              "const": "both",
+              "description": "Both answered. `trace_` is preferred because its output is smaller.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "capabilities": {
+          "$ref": "#/$defs/Capabilities"
+        },
+        "chain": {
+          "type": "string"
+        },
+        "chain_id": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "client_version": {
+          "type": "string"
+        },
+        "gas_price": {
+          "$ref": "#/$defs/Amount"
+        },
+        "head": {
+          "$ref": "#/$defs/BlockContext"
+        },
+        "network": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "chain_id",
+        "chain",
+        "client_version",
+        "head",
+        "gas_price",
+        "capabilities"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "nft_get",
+    "description": "Read one NFT: its owner, its metadata URI, and whatever metadata the\nexplorer has already resolved.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "contract": {
+          "description": "The collection contract address.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        },
+        "token_id": {
+          "description": "The token id, as a decimal string.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "contract",
+        "token_id"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "contract": {
+          "type": "string"
+        },
+        "item": {
+          "description": "The explorer's record, including any metadata it already resolved."
+        },
+        "metadata_uri": {
+          "description": "The raw `tokenURI`. An `ipfs://` value is not fetchable as written.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "metadata_uri_is_ipfs": {
+          "description": "True when `metadata_uri` needs an IPFS gateway to become a URL.",
+          "type": "boolean"
+        },
+        "network": {
+          "type": "string"
+        },
+        "owner": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "contract",
+        "token_id",
+        "metadata_uri_is_ipfs",
+        "source",
+        "item"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "nft_transfers",
+    "description": "One bounded page of transfers for a collection, or for one token in it.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "contract": {
+          "description": "The collection contract address.",
+          "type": "string"
+        },
+        "cursor": {
+          "description": "A `next_cursor` from a previous call.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        },
+        "page_size": {
+          "description": "Items per page, 1 to 100. Defaults to 50.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "token_id": {
+          "description": "Restrict to one token id. Omit for the whole collection.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "contract"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "contract": {
+          "type": "string"
+        },
+        "count": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "items": true,
+          "type": "array"
+        },
+        "network": {
+          "type": "string"
+        },
+        "next_cursor": {
+          "description": "Pass this back as `cursor` to get the next page. Absent means this was\nthe last one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "description": "The instance these items came from.",
+          "type": "string"
+        },
+        "token_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "contract",
+        "items",
+        "count",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "nonce_get",
+    "description": "Read how many transactions an address has sent.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "A 20-byte address.",
+          "type": "string"
+        },
+        "block": {
+          "description": "Block number, tag, or hash. Defaults to `latest`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "nonce": {
+          "description": "Transactions sent from this address, which is also the nonce the next\none would use.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "nonce"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "price_get",
+    "description": "Price one asset in another, read from on-chain pools and feeds.\nRoutes through Uniswap v2 and v3, Chainlink, and ERC-4626 vaults, ending\nat a stablecoin pegged to `fiat:usd`. The route and the block are part of\nthe answer: check them before trusting the number.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "asset": {
+          "description": "An ERC-20 address, `native` for the chain's own currency, or\n`fiat:<symbol>`.",
+          "type": "string"
+        },
+        "block": {
+          "description": "Price at this block instead of the head, for a reproducible number.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.prices` is true.",
+          "type": "string"
+        },
+        "quote": {
+          "description": "What to price it in. An ERC-20 address, `native`, or `fiat:usd`.\nDefaults to `fiat:usd`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "asset"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Amount": {
+          "description": "A base-unit integer with the decimals needed to read it.\n\n`raw` is a decimal string because a `u256` does not survive JSON's number\ntype, and `formatted` is computed with integer arithmetic so it is exact\nrather than whatever `f64` rounded it to.",
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "formatted": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "decimals",
+            "formatted"
+          ],
+          "type": "object"
+        },
+        "AssetSummary": {
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "identifier": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "identifier",
+            "symbol",
+            "decimals"
+          ],
+          "type": "object"
+        },
+        "BlockContext": {
+          "description": "The block a result was read at. Present wherever a number could change\nbetween two calls, so two fields of one answer are known to agree.",
+          "properties": {
+            "hash": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "number": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number"
+          ],
+          "type": "object"
+        },
+        "Hop": {
+          "properties": {
+            "confidence": {
+              "description": "Higher means this edge was preferred during routing.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "from": {
+              "type": "string"
+            },
+            "quoter": {
+              "description": "The quoter's own identity, such as `uniswap_v3:0x8ad5...` or\n`fixed:0xa0b8...:fiat:usd`.",
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "quoter",
+            "from",
+            "to",
+            "confidence"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/AssetSummary"
+        },
+        "network": {
+          "type": "string"
+        },
+        "price": {
+          "$ref": "#/$defs/Amount",
+          "description": "What one whole unit of `asset` is worth in `quote`."
+        },
+        "quote": {
+          "$ref": "#/$defs/AssetSummary"
+        },
+        "read_at": {
+          "$ref": "#/$defs/BlockContext",
+          "description": "The block every hop was read at."
+        },
+        "route": {
+          "description": "The hops the price went through, in order. A long route compounds the\nerror of every pool in it.",
+          "items": {
+            "$ref": "#/$defs/Hop"
+          },
+          "type": "array"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "asset",
+        "quote",
+        "price",
+        "read_at",
+        "route",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "price_route",
+    "description": "Show the route a price would take, without quoting it.\nUse this when `price_get` says there is no route, or when a price looks\nwrong and you want to see which pools produced it.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "asset": {
+          "description": "An ERC-20 address, `native`, or `fiat:<symbol>`.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.prices` is true.",
+          "type": "string"
+        },
+        "quote": {
+          "description": "What to route towards. Defaults to `fiat:usd`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "asset"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Hop": {
+          "properties": {
+            "confidence": {
+              "description": "Higher means this edge was preferred during routing.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "from": {
+              "type": "string"
+            },
+            "quoter": {
+              "description": "The quoter's own identity, such as `uniswap_v3:0x8ad5...` or\n`fixed:0xa0b8...:fiat:usd`.",
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "quoter",
+            "from",
+            "to",
+            "confidence"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "asset": {
+          "type": "string"
+        },
+        "discovered_quoters": {
+          "description": "The quoters discovered for this chain, whether or not the route uses\nthem.",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "network": {
+          "type": "string"
+        },
+        "quote": {
+          "type": "string"
+        },
+        "route": {
+          "items": {
+            "$ref": "#/$defs/Hop"
+          },
+          "type": "array"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "asset",
+        "quote",
+        "discovered_quoters",
+        "route",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "receipt_get",
+    "description": "Read one transaction receipt by hash. `summary.succeeded` is the field\nworth reading first: a mined transaction can still have reverted.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        },
+        "transaction_hash": {
+          "description": "32-byte transaction hash.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "transaction_hash"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Amount": {
+          "description": "A base-unit integer with the decimals needed to read it.\n\n`raw` is a decimal string because a `u256` does not survive JSON's number\ntype, and `formatted` is computed with integer arithmetic so it is exact\nrather than whatever `f64` rounded it to.",
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "formatted": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "decimals",
+            "formatted"
+          ],
+          "type": "object"
+        },
+        "ReceiptSummary": {
+          "properties": {
+            "block_number": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "contract_address": {
+              "description": "Set when this transaction deployed a contract.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "fee_paid": {
+              "$ref": "#/$defs/Amount"
+            },
+            "gas_used": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "log_count": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "succeeded": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "succeeded",
+            "block_number",
+            "gas_used",
+            "fee_paid",
+            "log_count"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "found": {
+          "type": "boolean"
+        },
+        "network": {
+          "type": "string"
+        },
+        "receipt": true,
+        "summary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReceiptSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "found"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "signature_lookup",
+    "description": "Look up the signatures that hash to a selector or an event topic.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "selector": {
+          "description": "A 4-byte function selector such as `0xa9059cbb`, a 32-byte event topic,\nor full calldata whose first four bytes are the selector.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "selector"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Kind": {
+          "enum": [
+            "function",
+            "event"
+          ],
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "candidates": {
+          "description": "Every signature that hashes to this selector. More than one is normal.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/Kind"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selector": {
+          "description": "What was actually looked up, after any calldata was trimmed to it.",
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "selector",
+        "kind",
+        "candidates",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "storage_get",
+    "description": "Read one contract storage slot, and the two readings of that word that\nare almost always what the caller wanted.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "A 20-byte contract address.",
+          "type": "string"
+        },
+        "block": {
+          "description": "Block number, tag, or hash. Defaults to `latest`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        },
+        "slot": {
+          "description": "Slot index, decimal or 0x-prefixed.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "slot"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "as_address": {
+          "description": "The low 20 bytes, which is what the word holds when the slot is an\n`address`. Meaningless for other layouts.",
+          "type": "string"
+        },
+        "as_uint": {
+          "description": "The same word read as an unsigned integer, which is what a `uint256`,\na balance, or a packed small value usually is.",
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "value": {
+          "description": "The raw 32-byte word.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "slot",
+        "value",
+        "as_uint",
+        "as_address"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "token_get",
+    "description": "Read an ERC-20's metadata, from the contract first and the explorer\nsecond.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "The token contract address.",
+          "type": "string"
+        },
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Amount": {
+          "description": "A base-unit integer with the decimals needed to read it.\n\n`raw` is a decimal string because a `u256` does not survive JSON's number\ntype, and `formatted` is computed with integer arithmetic so it is exact\nrather than whatever `f64` rounded it to.",
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "formatted": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "decimals",
+            "formatted"
+          ],
+          "type": "object"
+        },
+        "BlockContext": {
+          "description": "The block a result was read at. Present wherever a number could change\nbetween two calls, so two fields of one answer are known to agree.",
+          "properties": {
+            "hash": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "number": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "number"
+          ],
+          "type": "object"
+        },
+        "IconCandidate": {
+          "properties": {
+            "source": {
+              "description": "The source that offers this URL: blockscout, avara, zerion, smoldapp,\nor safewallet.",
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "url"
+          ],
+          "type": "object"
+        },
+        "Source": {
+          "description": "Where a field came from, named rather than implied.",
+          "oneOf": [
+            {
+              "const": "on_chain",
+              "description": "A direct contract read or RPC call against the configured endpoint.",
+              "type": "string"
+            },
+            {
+              "const": "explorer",
+              "description": "A Blockscout index.",
+              "type": "string"
+            },
+            {
+              "const": "explorer_verified_on_chain",
+              "description": "Both agreed.",
+              "type": "string"
+            },
+            {
+              "const": "explorer_unverified",
+              "description": "The index said so and the chain was not asked, or disagreed.",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "decimals": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "explorer_record": {
+          "description": "The explorer's record, when one exists. It carries things the contract\ndoes not: holder counts, market data, an icon URL."
+        },
+        "icons": {
+          "items": {
+            "$ref": "#/$defs/IconCandidate"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "type": "string"
+        },
+        "read_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/BlockContext"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The block a chain read was taken at."
+        },
+        "source": {
+          "$ref": "#/$defs/Source",
+          "description": "Where the fields above came from."
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "total_supply": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Amount"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "source",
+        "icons"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "token_holders",
+    "description": "One bounded page of a token's holders, largest first.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "description": "An address, or an ENS name when the `ens` feature is compiled in.",
+          "type": "string"
+        },
+        "cursor": {
+          "description": "A `next_cursor` from a previous call.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list` whose `capabilities.explorer` is true.",
+          "type": "string"
+        },
+        "page_size": {
+          "description": "Items per page, 1 to 100. Defaults to 50.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "address"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "count": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "items": true,
+          "type": "array"
+        },
+        "network": {
+          "type": "string"
+        },
+        "next_cursor": {
+          "description": "Pass this back as `cursor` to get the next page. Absent means this was\nthe last one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "description": "The instance these items came from.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "address",
+        "items",
+        "count",
+        "source"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "trace_call",
+    "description": "Trace a read-only call without sending it.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "block": {
+          "description": "Block number, tag, or hash. Defaults to `latest`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "data": {
+          "description": "ABI-encoded calldata.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "description": "The caller to simulate as.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "network": {
+          "description": "A name from `network_list`. Check `capabilities.traces` first.",
+          "type": "string"
+        },
+        "to": {
+          "description": "The contract to call.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Native value to attach, decimal or 0x-prefixed wei.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "network",
+        "to"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Which namespace answered. The shape of `trace` follows from this.",
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "trace": true,
+        "truncated": {
+          "description": "True when the trace was too large to return and was dropped. Narrow the\ncall rather than expecting a partial tree.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "network",
+        "namespace",
+        "method",
+        "truncated",
+        "trace"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "trace_tx",
+    "description": "Trace one executed transaction. Requires an endpoint that serves the\n`trace_` or `debug_` namespace; `network_list` reports which do.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "network": {
+          "description": "A name from `network_list`. Check `capabilities.traces` first.",
+          "type": "string"
+        },
+        "transaction_hash": {
+          "description": "32-byte transaction hash.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "transaction_hash"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "method": {
+          "type": "string"
+        },
+        "namespace": {
+          "description": "Which namespace answered. The shape of `trace` follows from this.",
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "trace": true,
+        "truncated": {
+          "description": "True when the trace was too large to return and was dropped. Narrow the\ncall rather than expecting a partial tree.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "network",
+        "namespace",
+        "method",
+        "truncated",
+        "trace"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "tx_get",
+    "description": "Read one transaction by hash. A hash the node has never seen returns\n`found: false` rather than an error, because \"not present\" is an answer.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "network": {
+          "description": "A name from `network_list`.",
+          "type": "string"
+        },
+        "transaction_hash": {
+          "description": "32-byte transaction hash.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "network",
+        "transaction_hash"
+      ],
+      "type": "object"
+    },
+    "outputSchema": {
+      "$defs": {
+        "Amount": {
+          "description": "A base-unit integer with the decimals needed to read it.\n\n`raw` is a decimal string because a `u256` does not survive JSON's number\ntype, and `formatted` is computed with integer arithmetic so it is exact\nrather than whatever `f64` rounded it to.",
+          "properties": {
+            "decimals": {
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "formatted": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "string"
+            },
+            "symbol": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "raw",
+            "decimals",
+            "formatted"
+          ],
+          "type": "object"
+        },
+        "TransactionSummary": {
+          "properties": {
+            "block_number": {
+              "description": "Absent while the transaction is still pending.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "from": {
+              "type": "string"
+            },
+            "input_size": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "is_deployment": {
+              "description": "True when `to` is empty, which means this deploys a contract.",
+              "type": "boolean"
+            },
+            "nonce": {
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "selector": {
+              "description": "The 4-byte selector, when there is calldata to take one from.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "value": {
+              "$ref": "#/$defs/Amount"
+            }
+          },
+          "required": [
+            "from",
+            "nonce",
+            "value",
+            "is_deployment",
+            "input_size"
+          ],
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "found": {
+          "type": "boolean"
+        },
+        "network": {
+          "type": "string"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TransactionSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transaction": true
+      },
+      "required": [
+        "network",
+        "found"
+      ],
+      "type": "object"
+    }
+  }
+]

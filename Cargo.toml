@@ -1,0 +1,93 @@
+[package]
+name = "eth-data-mcp"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94.1"
+description = "A read-only Model Context Protocol server for Ethereum data, forks, prices, and wallet assets"
+license = "LGPL-3.0"
+repository = "https://github.com/v3xlabs/eth-data"
+homepage = "https://github.com/v3xlabs/eth-data"
+readme = "README.md"
+keywords = ["ethereum", "mcp", "evm", "blockchain", "anvil"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "eth-data-mcp"
+path = "src/main.rs"
+
+[features]
+default = ["traces", "ens", "explorer", "signatures", "icons", "prices", "fork"]
+
+# Trace output shape is node-specific, so the node JSON is returned verbatim
+# and no alloy trace types are needed.
+traces = []
+ens = ["alloy/ens"]
+explorer = []
+signatures = []
+icons = ["dep:eth-icons"]
+# Held until eth-avatars exposes a resolver. See docs/configuration.md.
+avatars = []
+prices = ["dep:eth-prices"]
+# Anvil is spawned directly so its output can be captured for fork_logs, which
+# alloy's node bindings consume themselves.
+fork = []
+
+[dependencies]
+rmcp = { version = "3.1", features = [
+    "server",
+    "macros",
+    "schemars",
+    "transport-io",
+] }
+schemars = "1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "signal",
+    "process",
+    "io-util",
+    "sync",
+    "time",
+] }
+futures = "0.3"
+figment = { version = "0.10", features = ["toml", "env"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.13", default-features = false, features = [
+    "rustls",
+    "json",
+    "query",
+    "stream",
+] }
+alloy = { version = "2", default-features = false, features = [
+    "consensus",
+    "contract",
+    "dyn-abi",
+    "eips",
+    "json-rpc",
+    "json-abi",
+    "provider-http",
+    "reqwest-rustls-tls",
+    "rpc-types-eth",
+    "serde",
+    "sol-types",
+    "std",
+] }
+
+eth-icons = { version = "0.0.2", optional = true }
+eth-prices = { version = "1.1", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Only for PR_SET_PDEATHSIG, so an Anvil child cannot outlive a SIGKILLed server.
+libc = "0.2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+figment = { version = "0.10", features = ["toml", "env", "test"] }
+
+[profile.release]
+lto = "thin"
+strip = true

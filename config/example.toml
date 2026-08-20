@@ -1,0 +1,31 @@
+# eth-data configuration.
+#
+# One field per network: an RPC URL. Naming a network is what enables it, and
+# everything else follows from the chain ID that endpoint reports.
+#
+# Copy to ~/.config/eth-data/config.toml, or pass with --config.
+#
+# Naming any network here REPLACES the shipped defaults rather than adding to
+# them, so this file is the complete list of networks the server will serve.
+
+[networks]
+mainnet = "https://ethereum.reth.rs/rpc"
+sepolia = "https://ethereum-sepolia-rpc.publicnode.com"
+hoodi = "https://ethereum-hoodi-rpc.publicnode.com"
+
+# Chains with a built-in Blockscout instance and price anchors:
+# base = "https://base-rpc.publicnode.com"
+# optimism = "https://optimism-rpc.publicnode.com"
+# arbitrum = "https://arbitrum-one-rpc.publicnode.com"
+# gnosis = "https://gnosis-rpc.publicnode.com"
+# polygon = "https://polygon-bor-rpc.publicnode.com"
+
+# Your own node. http is allowed on loopback so no certificate is needed.
+# Point a network here if you want trace_tx and trace_call, which public
+# endpoints commonly withhold, or if you do not want a third party seeing every
+# address you look up.
+# local = "http://127.0.0.1:8545"
+
+# Any endpoint works, including a chain with no built-in tables. Chain reads,
+# ENS, and forks work everywhere; the explorer and price groups report
+# unsupported_on_network for a chain they have no entry for.
